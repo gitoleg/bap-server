@@ -1,5 +1,4 @@
 open Core_kernel
-open Bap_plugins.Std
 open Core_lwt.Std
 open Lwt_log
 open Bap.Std
@@ -35,10 +34,16 @@ let main () =
     error_f ~section "Failed to start server: %s"
       Error.(to_string_hum err)
 
+module Error = Bap_main.Extension.Error
+
 let () =
   let module H = Http_service in
   let module F = File_fetcher in
   let module M = Mmap_client in
   let module N = Mmap_server in
-  let () = Plugins.run () in
-  Lwt.Main.run @@ main ()
+  match Bap_main.init () with
+  | Ok () -> Lwt.Main.run @@ main ()
+  | Error (Error.Exit_requested code) -> exit code
+  | Error Error.Configuration -> exit 1
+  | Error err -> Format.eprintf "%a@\n%!" Error.pp err;
+    exit 1
